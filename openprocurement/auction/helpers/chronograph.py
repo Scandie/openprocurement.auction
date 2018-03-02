@@ -8,7 +8,7 @@ import consul
 import iso8601
 from datetime import timedelta, datetime
 from apscheduler.schedulers.gevent import GeventScheduler
-from gevent.subprocess import Popen
+from gevent.subprocess import Popen, check_output
 
 from uuid import uuid4
 
@@ -22,6 +22,8 @@ SERVER_NAME_PREFIX = 'AUCTION_WORKER_{}'
 MIN_AUCTION_START_TIME_RESERV = timedelta(seconds=60)
 MAX_AUCTION_START_TIME_RESERV = timedelta(seconds=15 * 60)
 
+LOGGER = getLogger('Auction Chronograph')
+
 
 def get_server_name():
     try:
@@ -30,6 +32,32 @@ def get_server_name():
     except Exception:
         suffix = uuid4().hex
     return SERVER_NAME_PREFIX.format(suffix)
+
+
+def check_auction_workers(config):
+    exceptions = []
+
+    default_worker_config = {
+        'auction_worker': config['auction_worker'],
+        'auction_worker_config': config['auction_worker_config']
+    }
+
+    for worker in config['plugins']:
+        result = ('ok', None)
+        worker_config = config.get(worker)
+        if not worker_config:
+            worker_config = default_worker_config
+        worker_config['random_auction_id'] = uuid4().hex
+        command = '{auction_worker} check {random_auction_id} ' \
+                  '{auction_worker_config}'.format(**worker_config)
+        try:
+            check_output(command.split())
+        except Exception as e:
+            exceptions.append(e)
+            result = ('failed', e)
+        LOGGER.check('{} - {}'.format(worker, result[0]), result[1])
+
+    return exceptions
 
 
 class AuctionExecutor(GeventExecutor):

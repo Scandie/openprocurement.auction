@@ -28,7 +28,7 @@ from openprocurement.auction.interfaces import (
 )
 from openprocurement.auction.design import sync_design_chronograph
 from openprocurement.auction.helpers.chronograph import (
-    get_server_name, AuctionScheduler
+    get_server_name, AuctionScheduler, check_auction_workers
 )
 from openprocurement.auction.helpers.chronograph_http import chronograph_webapp
 from openprocurement.auction.helpers.couch import (
@@ -36,6 +36,16 @@ from openprocurement.auction.helpers.couch import (
 )
 from openprocurement.auction.helpers.system import get_lisener
 
+logging.addLevelName(25, 'CHECK')
+
+
+def check(self, msg, exc=None, *args, **kwargs):
+    self.log(25, msg)
+    if exc:
+        self.error(exc, exc_info=True)
+
+
+logging.Logger.check = check
 
 LOGGER = logging.getLogger('Auction Chronograph')
 
@@ -50,17 +60,40 @@ class AuctionsChronograph(object):
         self.mapper = components.qA(self, IAuctionsManager)
         self.server_name = get_server_name()
         LOGGER.info('Init node: {}'.format(self.server_name))
-        self.init_database()
-        self.init_scheduler()
-        if config['main'].get('web_app', None):
-            self.init_web_app()
+        self.init_services()
+
+    def init_services(self):
+        exceptions = []
+
+        init_methods = [(self.init_database, 'CouchDB'),
+                        (self.init_scheduler, 'Scheduler')]
+        if self.config['main'].get('web_app', None):
+            init_methods.append((self.init_web_app, 'WebApp'))
+
+        # Checking Chronograph services
+        for method, service in init_methods:
+            result = ('ok', None)
+            try:
+                method()
+            except Exception as e:
+                exceptions.append(e)
+                result = ('failed', e)
+            LOGGER.check('{} - {}'.format(service, result[0]), result[1])
+
+        # Checking Auction Workers
+        worker_exceptions = check_auction_workers(self.config['main'])
+        if worker_exceptions:
+            exceptions.extend(worker_exceptions)
+        if exceptions:
+            raise exceptions[0]
 
     def init_database(self):
 
-        sync_design_chronograph(couchdb_dns_query_settings(
+        database = couchdb_dns_query_settings(
             self.config['main']["couch_url"],
             self.config['main']['auctions_db']
-        ))
+        )
+        sync_design_chronograph(database)
 
     def init_scheduler(self):
         self.scheduler = AuctionScheduler(
@@ -137,12 +170,18 @@ def main():
     parser = argparse.ArgumentParser(
         description='---- Auctions Chronograph ----')
     parser.add_argument('config', type=str, help='Path to configuration file')
+    parser.add_argument('-t', dest='check', action='store_const',
+                        const=True, default=False,
+                        help='Services availability checks only')
     params = parser.parse_args()
     if os.path.isfile(params.config):
         with open(params.config) as config_file_obj:
             config = load(config_file_obj.read())
         logging.config.dictConfig(config)
-        AuctionsChronograph(config).run()
+        chronograph = AuctionsChronograph(config)
+        if params.check:
+            exit()
+        chronograph.run()
 
 
 if __name__ == '__main__':
