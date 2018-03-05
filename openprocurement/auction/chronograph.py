@@ -2,6 +2,7 @@ from gevent import monkey
 monkey.patch_all()
 
 import os
+import sys
 import signal
 from gevent import signal as gevent_signal
 try:
@@ -40,6 +41,11 @@ logging.addLevelName(25, 'CHECK')
 
 
 def check(self, msg, exc=None, *args, **kwargs):
+    """
+    Log 'msg % args' with severity 'CHECK'.
+
+    If exc parameter is not None, will log exc message with severity 'ERROR'.
+    """
     self.log(25, msg)
     if exc:
         self.error(exc, exc_info=True)
@@ -180,7 +186,7 @@ def main():
         logging.config.dictConfig(config)
         chronograph = AuctionsChronograph(config)
         if params.check:
-            exit()
+            sys.exit()
         chronograph.run()
 
 
