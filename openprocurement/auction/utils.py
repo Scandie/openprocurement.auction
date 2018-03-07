@@ -438,6 +438,17 @@ def prepare_auction_worker_cmd(_for, tender_id, cmd, item,
     return params
 
 
+def check(self, msg, exc=None, *args, **kwargs):
+    """
+    Log 'msg % args' with severity 'CHECK'.
+
+    If exc parameter is not None, will log exc message with severity 'ERROR'.
+    """
+    self.log(25, msg)
+    if exc:
+        self.error(exc, exc_info=True)
+
+
 @implementer(IFeedItem)
 class FeedItem(Munch):
     """"""

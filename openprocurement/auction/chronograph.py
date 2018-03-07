@@ -22,7 +22,7 @@ from gevent.pywsgi import WSGIServer
 from datetime import datetime, timedelta
 from urlparse import urlparse
 
-from openprocurement.auction.utils import FeedItem
+from openprocurement.auction.utils import FeedItem, check
 from openprocurement.auction.core import components
 from openprocurement.auction.interfaces import (
     IAuctionsChronograph, IAuctionsManager
@@ -38,19 +38,6 @@ from openprocurement.auction.helpers.couch import (
 from openprocurement.auction.helpers.system import get_lisener
 
 logging.addLevelName(25, 'CHECK')
-
-
-def check(self, msg, exc=None, *args, **kwargs):
-    """
-    Log 'msg % args' with severity 'CHECK'.
-
-    If exc parameter is not None, will log exc message with severity 'ERROR'.
-    """
-    self.log(25, msg)
-    if exc:
-        self.error(exc, exc_info=True)
-
-
 logging.Logger.check = check
 
 LOGGER = logging.getLogger('Auction Chronograph')
