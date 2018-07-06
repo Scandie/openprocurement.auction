@@ -75,12 +75,22 @@ class AuctionsDataBridge(object):
             self.run_re_planning()
             return
 
+        # getting auction items from api by
+        # openprocurement_client.sync.ResourceFeeder
         for item in self.feeder.get_resource_items():
             # magic goes here
+            # munch auction item fields specified in API_EXTRA['opt_fields']
             feed = FeedItem(item)
+            # running __call__ method of core.DatabridgeManager, which returns
+            # instance of core.Planning, initialized with current instance of
+            # AuctionsDataBridge and feed object if value of
+            # procurementMethodType field in feed object was registered during
+            # entry_points loading, else returns None
             planning = self.mapper(feed)
-            if not planning:
+            if not planning:  # if procurementMethodType is not registered
                 continue
+            # calling __iter__ method of core.Planning's instance
+            # got from previous step
             for cmd, item_id, lot_id in planning:
                 if lot_id:
                     LOGGER.info('Lot {} of tender {} selected for {}'.format(
@@ -88,6 +98,11 @@ class AuctionsDataBridge(object):
                 else:
                     LOGGER.info('Tender {} selected for {}'.format(item_id,
                                                                    cmd))
+                # calling __call__ method of core.Planning's instance which
+                # prepares all needed arguments and returns result of
+                # gevent.subprocess.check_call function, which runs certain
+                # auction worker, depending on value of procurementMethodType of
+                # feed object
                 planning(cmd, item_id, lot_id=lot_id)
 
     def run_re_planning(self):

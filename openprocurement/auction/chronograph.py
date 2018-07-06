@@ -117,6 +117,11 @@ class AuctionsChronograph(object):
             # ADD FILTER BY VALUE
             # {start: '2016-09-10T14:36:40.378777+03:00', test: false}
             if datestamp < auction_item['value']['start']:
+                # running __call__ method of core.ChronographManager, which
+                # returns instance of core.RunDispatcher, initialized with
+                # current instance of AuctionsChronograph and auction_item if
+                # value of procurementMethodType field in feed object was
+                # registered during entry_points loading, else returns None
                 worker_cmd_provider = \
                     self.mapper(FeedItem(auction_item['value']))
                 if not worker_cmd_provider:
