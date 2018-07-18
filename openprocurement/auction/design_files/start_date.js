@@ -1,6 +1,7 @@
 function(doc){
-  if ((doc.current_stage||0) == -1) {
+  if ((doc.current_stage||0) == -1 || doc.submissionMethodDetails) {
      var mode = doc.mode||false ? doc.mode : "";
+     var submissionMethodDetails = doc.submissionMethodDetails||false ? doc.submissionMethodDetails : "";
      var api_version = (doc.TENDERS_API_VERSION||false) ? doc.TENDERS_API_VERSION : null;
      var procurement_method_type = doc.procurementMethodType||null;
      var auction_type = (doc.auction_type||false) ? doc.auction_type : "default";
@@ -9,7 +10,8 @@ function(doc){
          "mode": mode,
          "api_version": api_version,
          "auction_type": auction_type,
-         "procurementMethodType": procurement_method_type
+         "procurementMethodType": procurement_method_type,
+         "submissionMethodDetails": submissionMethodDetails
      });
   }
 }

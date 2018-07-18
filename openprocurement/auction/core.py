@@ -93,11 +93,15 @@ class RunDispatcher(object):
         else:
             tender_id = document_id
             lot_id = None
+        if self.item.get('submissionMethodDetails') == 'fastforward':
+            action = 'prepare_audit'
+        else:
+            action = 'run'
         with_api_version = self.item['api_version']
         params = prepare_auction_worker_cmd(
             self.chronograph,
             tender_id,
-            "run",
+            action,
             self.item,
             lot_id=lot_id,
             with_api_version=with_api_version
