@@ -2,7 +2,6 @@ from gevent import monkey
 monkey.patch_all()
 
 import os
-import sys
 import signal
 from gevent import signal as gevent_signal
 try:
@@ -22,7 +21,7 @@ from gevent.pywsgi import WSGIServer
 from datetime import datetime, timedelta
 from urlparse import urlparse
 
-from openprocurement.auction.utils import FeedItem, check
+from openprocurement.auction.utils import FeedItem, check, check_workers
 from openprocurement.auction.core import components
 from openprocurement.auction.interfaces import (
     IAuctionsChronograph, IAuctionsManager
@@ -51,6 +50,7 @@ class AuctionsChronograph(object):
         self.config = config
         self.timezone = timezone(config['main']['timezone'])
         self.mapper = components.qA(self, IAuctionsManager)
+        check_workers(self.mapper.plugins)
         self.server_name = get_server_name()
         LOGGER.info('Init node: {}'.format(self.server_name))
         self.init_services()
@@ -173,7 +173,7 @@ def main():
         logging.config.dictConfig(config)
         chronograph = AuctionsChronograph(config)
         if params.check:
-            sys.exit()
+            exit()
         chronograph.run()
 
 

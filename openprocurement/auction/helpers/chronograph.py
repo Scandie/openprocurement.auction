@@ -12,6 +12,8 @@ from gevent.subprocess import Popen, check_output
 
 from uuid import uuid4
 
+from openprocurement.auction.constants import DEFAULT_CONFIG
+
 LOCK_RETRIES = 6
 SLEEP_BETWEEN_TRIES_LOCK = 10
 WORKER_TIME_RUN = 16 * 60
@@ -37,16 +39,9 @@ def get_server_name():
 def check_auction_workers(config):
     exceptions = []
 
-    default_worker_config = {
-        'auction_worker': config['auction_worker'],
-        'auction_worker_config': config['auction_worker_config']
-    }
-
     for worker in config['plugins']:
         result = ('ok', None)
-        worker_config = config.get(worker)
-        if not worker_config:
-            worker_config = default_worker_config
+        worker_config = config['plugins'].get(worker, DEFAULT_CONFIG)
         worker_config['random_auction_id'] = uuid4().hex
         command = '{auction_worker} check {random_auction_id} ' \
                   '{auction_worker_config}'.format(**worker_config)

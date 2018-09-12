@@ -30,7 +30,7 @@ SIMPLE_AUCTION_TYPE = 0
 SINGLE_LOT_AUCTION_TYPE = 1
 MULTILOT_AUCTION_ID = "{0[id]}_{1[id]}"  # {TENDER_ID}_{LOT_ID}
 LOGGER = logging.getLogger('Openprocurement Auction')
-PKG_NAMESPACE = "openprocurement.auction.auctions"
+PKG_NAMESPACE = "openprocurement.auction.components"
 
 
 components = AuctionComponents()
@@ -43,11 +43,15 @@ class AuctionManager(object):
     def __init__(self, for_):
         self.for_ = for_
         self.plugins = self.for_.config.get('main', {}).get('plugins') or []
+        self.pmt_configurator = {}
         for entry_point in iter_entry_points(PKG_NAMESPACE):
             type_ = entry_point.name
             if type_ in self.plugins or type_ == 'default':
                 plugin = entry_point.load()
-                plugin(components)
+                pmts = self.plugins.get(type_, {}).get('procurement_method_types', [])
+                plugin(components, pmts)
+                for pmt in pmts:
+                    self.pmt_configurator[pmt] = type_
 
     def __repr__(self):
         return "<Auctions mapper for: {}>".format(self.for_)

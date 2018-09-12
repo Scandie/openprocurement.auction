@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-version = '4.0.1b1.dev5+eauctions'
+version = '4.0.1b4+eauctions'
 install_requires = [
     'setuptools',
     'requests',
@@ -50,9 +50,6 @@ entry_points = {
     ],
     'paste.app_factory': [
         'auctions_server = openprocurement.auction.app:make_auctions_app',
-    ],
-    'openprocurement.auction.auctions': [
-        'default = openprocurement.auction.includeme:default'
     ]
 }
 

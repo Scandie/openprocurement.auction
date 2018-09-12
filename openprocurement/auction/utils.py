@@ -5,6 +5,8 @@ except ImportError:
     pass
 
 import iso8601
+import inspect
+import os
 import uuid
 import logging
 import json
@@ -25,6 +27,7 @@ from munch import Munch
 from zope.interface import implementer
 
 from openprocurement.auction.interfaces import IFeedItem
+from openprocurement.auction.constants import DEFAULT_CONFIG
 
 
 logger = logging.getLogger('Auction Worker')
@@ -33,6 +36,18 @@ EXTRA_LOGGING_VALUES = {
     'X-Request-ID': 'JOURNAL_REQUEST_ID',
     'X-Clint-Request-ID': 'JOURNAL_CLIENT_REQUEST_ID'
 }
+
+
+logging.addLevelName(25, 'CHECK')
+
+
+def check(self, msg, exc=None, *args, **kwargs):
+    self.log(25, msg)
+    if exc:
+        self.error(exc, exc_info=True)
+
+
+logging.Logger.check = check
 
 
 def generate_request_id(prefix=b'auction-req-'):
@@ -92,16 +107,17 @@ def get_time(item):
 
 def sorting_by_amount(bids, reverse=False):
     """
+    This function sort element by amount ascending.
+    If amount of bids is equal it will sort it by time in descending order
     >>> bids = [
-    ...     {'amount': 3955.0, 'bidder_id': 'df1', 'time': '2015-04-24T11:07:30.723296+03:00'},
     ...     {'amount': 3966.0, 'bidder_id': 'df2', 'time': '2015-04-24T11:07:30.723296+03:00'},
-    ...     {'amount': 3955.0, 'bidder_id': 'df4', 'time': '2015-04-23T15:48:41.971644+03:00'},
+    ...     {'amount': 3955.0, 'bidder_id': 'df1', 'time': '2015-04-24T11:07:30.723296+03:00'},
+    ...     {'amount': 3955.0, 'bidder_id': 'df4', 'time': '2015-04-24T15:48:41.971644+03:00'}
     ... ]
     >>> sorting_by_amount(bids)  # doctest: +NORMALIZE_WHITESPACE
-    [{'amount': 3966.0, 'bidder_id': 'df2', 'time': '2015-04-24T11:07:30.723296+03:00'},
+    [{'amount': 3955.0, 'bidder_id': 'df4', 'time': '2015-04-24T15:48:41.971644+03:00'},
      {'amount': 3955.0, 'bidder_id': 'df1', 'time': '2015-04-24T11:07:30.723296+03:00'},
-     {'amount': 3955.0, 'bidder_id': 'df4', 'time': '2015-04-23T15:48:41.971644+03:00'}]
-
+     {'amount': 3966.0, 'bidder_id': 'df2', 'time': '2015-04-24T11:07:30.723296+03:00'}]
     >>> bids = [
     ...     {'amount': 3966.0, 'bidder_id': 'df1', 'time': '2015-04-24T11:07:20+03:00'},
     ...     {'amount': 3966.0, 'bidder_id': 'df2', 'time': '2015-04-24T11:07:30+03:00'},
@@ -131,12 +147,27 @@ def sorting_by_amount(bids, reverse=False):
 
 def sorting_start_bids_by_amount(bids, features=None, reverse=True):
     """
-    >>> from json import load
-    >>> import os
-    >>> data = load(open(os.path.join(os.path.dirname(__file__),
-    ...                               'tests/functional/data/tender_simple.json')))
-    >>> sorted_data = sorting_start_bids_by_amount(data['data']['bids'])
-
+    >>> bids = [
+    ...  {
+    ...    "date": "2014-11-19T08:22:21.726234+00:00",
+    ...    "id": "d3ba84c66c9e4f34bfb33cc3c686f137",
+    ...    "value": {
+    ...      "currency": None,
+    ...      "amount": 475000.0,
+    ...      "valueAddedTaxIncluded": True
+    ...    }
+    ...   },
+    ...  {
+    ...    "date": "2014-11-19T08:22:24.038426+00:00",
+    ...    "id": "5675acc9232942e8940a034994ad883e",
+    ...    "value": {
+    ...      "currency": None,
+    ...      "amount": 480000.0,
+    ...      "valueAddedTaxIncluded": True
+    ...    }
+    ...  }
+    ... ]
+    >>> sorted_data = sorting_start_bids_by_amount(bids)
     """
     def get_amount(item):
         return item['value']['amount']
@@ -395,40 +426,26 @@ def filter_amount(stage):
     return stage
 
 
-def get_auction_worker_configuration_path(_for, view_value, key='api_version'):
+def get_auction_worker_configuration_path(_for, view_value, config, key='api_version'):
     value = view_value.get(key, '')
-    config = _for.config['main'].get(
-        view_value.get('procurementMethodType'),
-        _for.config['main']
-    )
     if value:
         path = config.get(
             'auction_worker_config_for_{}_{}'.format(key, value),
-            config.get('auction_worker_config', '')
+            config['auction_worker_config']
         )
-        if not path:
-            path = _for.config['main'].get(
-                'auction_worker_config_for_{}_{}'.format(key, value),
-                _for.config['main']['auction_worker_config']
-            )
         return path
     else:
-        return config.get(
-            'auction_worker_config',
-            _for.config['main']['auction_worker_config']
-        )
+        return config['auction_worker_config']
 
 
 def prepare_auction_worker_cmd(_for, tender_id, cmd, item,
                                lot_id='', with_api_version=''):
-    config = _for.config['main'].get(
-        item.get('procurementMethodType'),
-        _for.config['main']
-    )
+    plugin = _for.mapper.pmt_configurator.get(item.get('procurementMethodType'))
+    config = _for.mapper.plugins.get(plugin, DEFAULT_CONFIG)
     params = [
-        config.get('auction_worker', _for.config['main'].get('auction_worker')),
+        config['auction_worker'],
         cmd, tender_id,
-        get_auction_worker_configuration_path(_for, item)
+        get_auction_worker_configuration_path(_for, item, config)
     ]
     if lot_id:
         params += ['--lot', lot_id]
@@ -452,3 +469,27 @@ def check(self, msg, exc=None, *args, **kwargs):
 @implementer(IFeedItem)
 class FeedItem(Munch):
     """"""
+
+
+def get_logger_for_calling_module():
+    frame = inspect.stack()[2]
+    module = inspect.getmodule(frame[0])
+    return logging.getLogger(module.__name__)
+
+
+def check_workers(plugins):
+    exceptions = []
+    logger = get_logger_for_calling_module()
+    for plugin in plugins:
+        try:
+            if not os.path.isfile(plugins[plugin].get('auction_worker_config')):
+                raise OSError('Worker config for {} auctions does not exists'.format(plugin))
+        except OSError as e:
+            exceptions.append(e)
+            result = ('failed', e)
+        else:
+            result = ('ok', None)
+        logger.check('{} auctions worker config - {}'.format(plugin, result[0]), result[1])
+
+    if exceptions:
+        raise exceptions[0]

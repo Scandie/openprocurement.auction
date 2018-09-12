@@ -1,44 +1,24 @@
 # TODO: test chronograph config
-import webtest
 import pytest
 from requests import Session
-from gevent import spawn
 
 from openprocurement.auction.chronograph import AuctionsChronograph
 from openprocurement.auction.helpers.chronograph import check_auction_workers
-from openprocurement.auction.tests.utils import put_test_doc, test_public_document, \
-    update_start_auction_period
 
 test_chronograph_config = {}
 
 
-@pytest.fixture(scope='funtion')
 def chronograph(request):
     # webapp = true
     chrono = AuctionsChronograph(test_chronograph_config)
     request.cls.chrono = chrono
-    request.client = Session() # TODO: Add prefix path
+    request.cls.client = Session() # TODO: Add prefix path
     return chrono
 
 
-@pytest.mark.skip
+@pytest.mark.usefixtures('chronograph')
 class TestChronograph(object):
-
-    def test_view_job_add(self):
-        spawn(self.chrono.run())
-        with put_test_dock(some_db, update_start_auction_period(test_public_document)):
-            resp = self.client.get('/jobs')
-            assert resp
-
-    def test_listing(self):
-        spawn(self.chrono.run())
-        with put_test_dock(some_db, update_start_auction_period(test_public_document)):
-            resp = self.client.get('/active_jobs')
-            assert resp
-
-    def test_shutdown(self):
-        resp = self.client.get('/active_jobs')
-        assert resp.test == "Start shutdown"
+    pass
 
 
 def test_chronograph_init_services(chronograph_config,
@@ -126,14 +106,14 @@ def test_check_auction_workers(chronograph_config,
 
     assert mock_check_output.call_count == 3
 
-    assert chronograph_config['main']['auction_worker'] in mock_check_output.call_args_list[0][0][0]
-    assert chronograph_config['main']['auction_worker_config'] in mock_check_output.call_args_list[0][0][0]
+    assert chronograph_config['main']['plugins']['english']['auction_worker'] in mock_check_output.call_args_list[0][0][0]
+    assert chronograph_config['main']['plugins']['english']['auction_worker_config'] in mock_check_output.call_args_list[0][0][0]
 
-    assert chronograph_config['main']['auction_worker'] in mock_check_output.call_args_list[1][0][0]
-    assert chronograph_config['main']['auction_worker_config'] in mock_check_output.call_args_list[1][0][0]
+    assert chronograph_config['main']['plugins']['texas']['auction_worker'] in mock_check_output.call_args_list[1][0][0]
+    assert chronograph_config['main']['plugins']['texas']['auction_worker_config'] in mock_check_output.call_args_list[1][0][0]
 
-    assert chronograph_config['main']['dgfInsider']['auction_worker'] in mock_check_output.call_args_list[2][0][0]
-    assert chronograph_config['main']['dgfInsider']['auction_worker_config'] in mock_check_output.call_args_list[2][0][0]
+    assert chronograph_config['main']['plugins']['dutch']['auction_worker'] in mock_check_output.call_args_list[2][0][0]
+    assert chronograph_config['main']['plugins']['dutch']['auction_worker_config'] in mock_check_output.call_args_list[2][0][0]
 
     assert len(worker_errors) == 2
 

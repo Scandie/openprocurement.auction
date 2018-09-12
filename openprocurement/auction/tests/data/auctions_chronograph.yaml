@@ -6,18 +6,24 @@ main:
   couch_url: http://admin:zaq1xsw2@0.0.0.0:9000/
   auctions_db: database
   timezone: Europe/Kiev
-  auction_worker: /home/scandie/projects/insider/openprocurement.auction.buildout/bin/auction_worker
-  auction_worker_config: /home/scandie/projects/insider/openprocurement.auction.buildout/etc/auction_worker_defaults.yaml
-  auction_worker_config_for_api_version_dev: /home/scandie/projects/insider/openprocurement.auction.buildout/etc/auction_worker_defaults.yaml
+  auction_worker_config_for_api_version_dev: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/etc/auction_worker_defaults.yaml
   limit_auctions: 500
   limit_free_memory: 0.15
   web_app: 
   use_consul: False
-  plugins: [dgfOtherAssets, dgfFinancialAssets, dgfInsider]
-  dgfInsider:
-      auction_worker_config: /home/scandie/projects/insider/openprocurement.auction.buildout/etc/auction_worker_insider.yaml
-      auction_worker: /home/scandie/projects/insider/openprocurement.auction.buildout/bin/auction_insider
-
+  plugins:
+    english:
+      auction_worker_config: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/etc/auction_worker_defaults.yaml
+      procurement_method_types: [dgfOtherAssets, dgfFinancialAssets]
+      auction_worker: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/bin/auction_worker
+    dutch:
+      auction_worker_config: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/etc/auction_worker_insider.yaml
+      procurement_method_types: [dgfInsider]
+      auction_worker: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/bin/auction_insider
+    texas:
+      auction_worker_config: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/etc/auction_worker_texas.yaml
+      procurement_method_types: [texas]
+      auction_worker: /home/scandie/projects/eauctions_plugins/openprocurement.auction.buildout/bin/auction_texas
 
 version: 1
 disable_existing_loggers: false
