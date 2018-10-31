@@ -19,7 +19,7 @@ from openprocurement.auction.design import (
     PreAnnounce_view
 )
 from openprocurement.auction.utils import (
-    do_until_success, prepare_auction_worker_cmd
+    do_until_success, prepare_auction_worker_cmd, is_document_locked
 )
 
 
@@ -79,6 +79,15 @@ class ClassicAuctionPlanning(object):
                             'MESSAGE_ID':
                                 DATA_BRIDGE_PLANNING_TENDER_ALREADY_PLANNED})
                     raise StopIteration
+                elif is_document_locked(self.bridge, self.item):
+                    LOGGER.info(
+                        "Auction {} is already running. "
+                        "Skip it for planning".format(self.item['id']),
+                        extra={
+                            'MESSAGE_ID': DATA_BRIDGE_PLANNING_TENDER_SKIP
+                        }
+                    )
+                    raise StopIteration
                 yield ("planning", str(self.item['id']), "")
             elif 'lots' in self.item:
                 for lot in self.item['lots']:
@@ -125,6 +134,15 @@ class ClassicAuctionPlanning(object):
                             LOGGER.info(
                                 "Tender {} already planned on same "
                                 "date".format(auction_id), extra=extra)
+                            raise StopIteration
+                        elif is_document_locked(self.bridge, self.item):
+                            LOGGER.info(
+                                "Auction {} is already running. "
+                                "Skip it for planning".format(self.item['id']),
+                                extra={
+                                    'MESSAGE_ID': DATA_BRIDGE_PLANNING_TENDER_SKIP
+                                }
+                            )
                             raise StopIteration
                         yield ("planning", str(self.item["id"]),
                                str(lot["id"]))
@@ -215,6 +233,15 @@ class NonClassicAuctionPlanning(ClassicAuctionPlanning):
                         "Auction {} already planned on same date".format(self.item['id']),
                         extra={
                             'MESSAGE_ID': DATA_BRIDGE_PLANNING_TENDER_ALREADY_PLANNED
+                        }
+                    )
+                    raise StopIteration
+                elif is_document_locked(self.bridge, self.item):
+                    LOGGER.info(
+                        "Auction {} is already running. "
+                        "Skip it for planning".format(self.item['id']),
+                        extra={
+                            'MESSAGE_ID': DATA_BRIDGE_PLANNING_TENDER_SKIP
                         }
                     )
                     raise StopIteration

@@ -21,7 +21,7 @@ from gevent.pywsgi import WSGIServer
 from datetime import datetime, timedelta
 from urlparse import urlparse
 
-from openprocurement.auction.utils import FeedItem, check_workers
+from openprocurement.auction.utils import FeedItem, check_workers, is_document_locked
 from openprocurement.auction.core import components
 from openprocurement.auction.interfaces import (
     IAuctionsChronograph, IAuctionsManager
@@ -120,6 +120,12 @@ class AuctionsChronograph(object):
                 worker_cmd_provider = \
                     self.mapper(FeedItem(auction_item['value']))
                 if not worker_cmd_provider:
+                    continue
+                elif is_document_locked(self, auction_item):
+                    LOGGER.info(
+                        'Auction {} is already running. '
+                        'Skip it for scheduling.'.format(auction_item['id'])
+                    )
                     continue
                 self.scheduler.schedule_auction(
                     auction_item['id'], auction_item['value'],

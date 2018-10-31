@@ -11,6 +11,7 @@ import uuid
 import logging
 import json
 import requests
+import yaml
 
 from retrying import retry
 from datetime import MINYEAR, datetime
@@ -25,6 +26,7 @@ from barbecue import chef
 from fractions import Fraction
 from munch import Munch
 from zope.interface import implementer
+from urlparse import urljoin
 
 from openprocurement.auction.interfaces import IFeedItem
 from openprocurement.auction.constants import DEFAULT_CONFIG
@@ -438,10 +440,15 @@ def get_auction_worker_configuration_path(_for, view_value, config, key='api_ver
         return config['auction_worker_config']
 
 
+def _get_worker_config_by_pmt(_for, item):
+    plugin = _for.mapper.pmt_configurator.get(item.get('procurementMethodType'), DEFAULT_CONFIG)
+    config = _for.mapper.plugins.get(plugin)
+    return config
+
+
 def prepare_auction_worker_cmd(_for, tender_id, cmd, item,
                                lot_id='', with_api_version=''):
-    plugin = _for.mapper.pmt_configurator.get(item.get('procurementMethodType'))
-    config = _for.mapper.plugins.get(plugin, DEFAULT_CONFIG)
+    config = _get_worker_config_by_pmt(_for, item)
     params = [
         config['auction_worker'],
         cmd, tender_id,
@@ -453,6 +460,27 @@ def prepare_auction_worker_cmd(_for, tender_id, cmd, item,
     if with_api_version:
         params += ['--with_api_version', with_api_version]
     return params
+
+
+def is_document_locked(_for, item):
+    auction_id = item.id
+    config = _get_worker_config_by_pmt(_for, item)
+
+    worker_defaults_path = get_auction_worker_configuration_path(
+        _for, item, config, key='api_version'
+    )
+    worker_defaults = yaml.load(open(worker_defaults_path))
+    auction_path = get_mapping(worker_defaults, auction_id)
+    if not auction_path:
+        return False
+
+    auction_path = urljoin(auction_path, '/health')
+    response = make_request(url=auction_path, method="get", retry_count=5)
+    if not response:
+        delete_mapping(worker_defaults, auction_id)
+        return False
+
+    return True
 
 
 @implementer(IFeedItem)
