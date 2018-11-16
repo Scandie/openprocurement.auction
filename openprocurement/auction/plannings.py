@@ -2,7 +2,7 @@ import logging
 import iso8601
 
 from datetime import datetime
-from time import mktime, time
+from time import time
 from gevent.subprocess import check_call
 
 from openprocurement.auction.systemd_msgs_ids import (
@@ -19,7 +19,7 @@ from openprocurement.auction.design import (
     PreAnnounce_view
 )
 from openprocurement.auction.utils import (
-    do_until_success, prepare_auction_worker_cmd
+    do_until_success, prepare_auction_worker_cmd, get_timestamp
 )
 
 
@@ -49,8 +49,7 @@ class ClassicAuctionPlanning(object):
                 start_date = start_date.astimezone(self.bridge.tz)
                 auctions_start_in_date = startDate_view(
                     self.bridge.db,
-                    key=(mktime(start_date.timetuple()) +
-                         start_date.microsecond / 1E6) * 1000
+                    key=get_timestamp(start_date)
                 )
                 if datetime.now(self.bridge.tz) > start_date:
                     LOGGER.info(
@@ -90,8 +89,7 @@ class ClassicAuctionPlanning(object):
                         start_date = start_date.astimezone(self.bridge.tz)
                         auctions_start_in_date = startDate_view(
                             self.bridge.db,
-                            key=(mktime(start_date.timetuple()) +
-                                 start_date.microsecond / 1E6) * 1000
+                            key=get_timestamp(start_date)
                         )
                         if datetime.now(self.bridge.tz) > start_date:
                             LOGGER.info(
@@ -196,8 +194,7 @@ class NonClassicAuctionPlanning(ClassicAuctionPlanning):
                 start_date = start_date.astimezone(self.bridge.tz)
                 auctions_start_in_date = startDate_view(
                     self.bridge.db,
-                    key=(mktime(start_date.timetuple()) +
-                         start_date.microsecond / 1E6) * 1000
+                    key=get_timestamp(start_date)
                 )
                 if datetime.now(self.bridge.tz) > start_date:
                     LOGGER.info(

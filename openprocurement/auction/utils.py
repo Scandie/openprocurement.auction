@@ -25,6 +25,7 @@ from barbecue import chef
 from fractions import Fraction
 from munch import Munch
 from zope.interface import implementer
+from time import mktime
 
 from openprocurement.auction.interfaces import IFeedItem
 from openprocurement.auction.constants import DEFAULT_CONFIG
@@ -482,3 +483,15 @@ def check_workers(plugins):
 
     if exceptions:
         raise exceptions[0]
+
+
+def get_timestamp(date):
+    """
+    Convert datetime.datetime object to timestamp
+
+    :param date: date object
+    :type date: datetime.datetime
+    :return: timestamp in milliseconds
+    :rtype: int
+    """
+    return int((mktime(date.timetuple()) + date.microsecond / 1E6) * 1000)
